@@ -1,4 +1,4 @@
-import HttpServer from "./http/server";
+import {HttpServer} from "./http/server";
 import dotenv = require("dotenv");
 import env from "./interfaces/env"
 

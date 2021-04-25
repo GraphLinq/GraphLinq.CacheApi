@@ -4,19 +4,24 @@ import cors = require("cors");
 import hostedApi from "../providers/hostedApi";
 import moment from "moment"
 import env from "../interfaces/env"
+import { type } from "node:os";
+import CacheWorker from "./cacheWorker";
 
-class CacheRoute {
+export class CacheRoute {
     path: string
     body: any | undefined
     content: any
     last_refreshed: Date
+    type: string
 }
 
-class HttpServer
+export class HttpServer
 {
     public routesCaches: CacheRoute[] = []
     private expressApp: any;
-    constructor(private host: string, private port: number) { 
+    private cacheWorker: CacheWorker;
+    constructor(private host: string, private port: number) {
+        this.cacheWorker = new CacheWorker(this)
     }
 
     public fetchLiveCache(route: string, body: any = undefined): CacheRoute | undefined {
@@ -32,12 +37,14 @@ class HttpServer
 
     public updateCache(route: string, obj: CacheRoute) {
         const fromCache: CacheRoute | undefined = this.routesCaches.find(x => x.path === route && x.body === obj.body)
-        if (fromCache === undefined) { 
+        if (fromCache === undefined) {
+            console.log(`⚡️[http]: New endpoint added to the cache: ${obj.path}`)
             return this.routesCaches.push({
                 path: obj.path,
                 content: obj.content,
                 last_refreshed: obj.last_refreshed,
-                body: obj.body
+                body: obj.body,
+                type: obj.type
             })
         }
         
@@ -45,6 +52,7 @@ class HttpServer
         fromCache.last_refreshed = obj.last_refreshed
         fromCache.path = obj.path
         fromCache.body = obj.body
+        fromCache.type = obj.type
     }
 
     public computeRouteQueries(queries: any[]): string
@@ -73,7 +81,8 @@ class HttpServer
                 path: route,
                 content: result,
                 last_refreshed: new Date(),
-                body: JSON.stringify(req.body)
+                body: JSON.stringify(req.body),
+                type: type
             })
             res.send(result);
         }
@@ -114,4 +123,3 @@ class HttpServer
 
 };
 
-export default HttpServer;
