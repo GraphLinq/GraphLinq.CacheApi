@@ -47,17 +47,30 @@ class HttpServer
         fromCache.body = obj.body
     }
 
+    public computeRouteQueries(queries: any[]): string
+    {
+        let route: string = ""
+        Object.keys(queries).forEach((key: any, i: number) => {
+            try {
+                route += (i == 0) ? `?${key}=${queries[key].trim()}` : `&${key}=${queries[key].trim()}`
+            } catch(e) { console.error(e) }
+          });
+        return route
+    }
+
     public async handleRequest(type: string, req: any, res: any)
     {
+        let route = `${req.params[0]}` + this.computeRouteQueries(req.query)
+
         try {
-            const fromCache: CacheRoute | undefined = this.fetchLiveCache(req.params[0], JSON.stringify(req.body))
+            const fromCache: CacheRoute | undefined = this.fetchLiveCache(route, JSON.stringify(req.body))
             if (fromCache !== undefined) {
                 return res.send(fromCache.content)
             }
 
-            const result = (type === "GET") ? await hostedApi.fetchGetDatas(req.params[0]) : await hostedApi.fetchPostDatas(req.params[0], req.body)
-            this.updateCache(req.params[0], {
-                path: req.params[0],
+            const result = (type === "GET") ? await hostedApi.fetchGetDatas(route) : await hostedApi.fetchPostDatas(route, req.body)
+            this.updateCache(route, {
+                path: route,
                 content: result,
                 last_refreshed: new Date(),
                 body: JSON.stringify(req.body)
@@ -67,7 +80,7 @@ class HttpServer
         catch (e)
         {
             console.error(e)
-            const lastCache = this.fetchLastCache(req.params[0], JSON.stringify(req.body))
+            const lastCache = this.fetchLastCache(route, JSON.stringify(req.body))
             if (lastCache !== undefined) {
                 return res.send(lastCache.content);
             }
