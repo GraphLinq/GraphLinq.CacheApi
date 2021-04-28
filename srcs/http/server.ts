@@ -18,6 +18,8 @@ export class CacheRoute {
 export class HttpServer
 {
     public routesCaches: CacheRoute[] = []
+    public routesHistory: CacheRoute[] = []
+
     private expressApp: any;
     private cacheWorker: CacheWorker;
     constructor(private host: string, private port: number) {
@@ -33,6 +35,10 @@ export class HttpServer
 
     public fetchLastCache(route: string, body: any = undefined): CacheRoute | undefined {
         return this.routesCaches.find(x => x.path === route && x.body === body)
+    }
+
+    public fetchCacheHistory(route: string, body: any = undefined): CacheRoute | undefined {
+        return this.routesHistory.find(x => x.path === route && x.body === body)
     }
 
     public updateCache(route: string, obj: CacheRoute) {
@@ -55,6 +61,32 @@ export class HttpServer
         fromCache.type = obj.type
     }
 
+    public updateDailyHistory(route: string, obj: CacheRoute) {
+        let fromCache: CacheRoute | undefined = this.routesHistory.find(x => x.path === route && x.body === obj.body)
+        if (fromCache === undefined) {
+            fromCache = {
+                path: obj.path,
+                content: obj.content,
+                last_refreshed: obj.last_refreshed,
+                body: obj.body,
+                type: obj.type
+            }
+
+            this.routesHistory.push(fromCache)
+        }
+        else
+        {
+            var diff = moment.duration(moment(new Date()).diff(fromCache.last_refreshed))
+            if (diff.hours() > 24) {
+                fromCache.content = obj.content
+                fromCache.last_refreshed = obj.last_refreshed
+                fromCache.path = obj.path
+                fromCache.body = obj.body
+                fromCache.type = obj.type
+            }
+        }
+    }
+
     public computeRouteQueries(queries: any[]): string
     {
         let route: string = ""
@@ -66,9 +98,33 @@ export class HttpServer
         return route
     }
 
+    public isHistoryRequest(queries: any[]): boolean {
+        let isHistory: boolean = false
+        Object.keys(queries).forEach((key: any, i: number) => {
+            if (key === "apiHistory") { isHistory = true }
+        })
+        return isHistory
+    }
+
     public async handleRequest(type: string, req: any, res: any)
     {
         let route = `${req.params[0]}` + this.computeRouteQueries(req.query)
+        try {
+            if (this.isHistoryRequest(req.query)) {
+                // yeah i know.. but well at least it works
+                route = route.replace("?apiHistory=", "")
+                            .replace("&apiHistory=", "")
+                            .replace("?apiHistory", "")
+                            .replace("&apiHistory", "")
+                console.log(`⚡️[http]: Received history cache request for ${route}`)
+
+                const historyCache: CacheRoute | undefined = this.fetchCacheHistory(route, JSON.stringify(req.body))
+                if (historyCache !== undefined) {
+                    return res.send(historyCache.content)
+                }
+                return res.status(500).send({message: "History cache not formated yet"});
+            }
+        } catch(e) { console.error(e )}
 
         try {
             const fromCache: CacheRoute | undefined = this.fetchLiveCache(route, JSON.stringify(req.body))
@@ -77,13 +133,16 @@ export class HttpServer
             }
 
             const result = (type === "GET") ? await hostedApi.fetchGetDatas(route) : await hostedApi.fetchPostDatas(route, req.body)
-            this.updateCache(route, {
+            const objCache: CacheRoute = {
                 path: route,
                 content: result,
                 last_refreshed: new Date(),
                 body: JSON.stringify(req.body),
                 type: type
-            })
+            }
+
+            this.updateCache(route, objCache)
+            this.updateDailyHistory(route, objCache)
             res.send(result);
         }
         catch (e)
