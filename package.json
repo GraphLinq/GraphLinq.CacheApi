@@ -1,7 +1,7 @@
 {
-  "name": "graphlinq-api-cache",
+  "name": "api-metadata-cryptexos",
   "version": "1.0.0",
-  "description": "Cache API for the GraphLinq Analytics Interface",
+  "description": "API for metadata cryptexos",
   "main": "index.js",
   "scripts": {
     "start": "tsc && node dist/main.js",
@@ -9,9 +9,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "glq"
+    "cryptexos"
   ],
-  "author": "Frederick MARINHO - GraphLinq Core Team",
+  "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/moment": "^2.13.0",
@@ -22,6 +22,7 @@
     "express": "^4.17.1",
     "fs": "0.0.1-security",
     "moment": "^2.29.1",
+    "mongodb": "^4.3.1",
     "node-fetch": "^2.6.1",
     "nodemon": "^2.0.7",
     "reflect-metadata": "^0.1.13"
