@@ -1,5 +1,5 @@
 {
-    "name": "api-metadata-cryptexos",
+    "name": "api-cache-proxy",
     "script": "dist/main.js",
     "instances": "1",
     "env": {
